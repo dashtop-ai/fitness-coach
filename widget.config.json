@@ -1,0 +1,36 @@
+{
+  "name": "Fitness Coach",
+  "widgetType": "fitness-coach",
+  "version": "1.0.0",
+  "description": "AI fitness coach — daily workouts, exercise tracking, and personalized coaching",
+  "category": "productivity",
+  "tags": ["fitness", "workout", "health", "exercise", "coaching"],
+  "author": {
+    "name": "Dashtop Community",
+    "username": "dashtop-ai"
+  },
+  "permissions": ["network:fetch"],
+  "defaultConfig": {
+    "level": "beginner",
+    "goal": "strength"
+  },
+  "defaultSize": { "w": 5, "h": 5 },
+  "minSize": { "w": 4, "h": 4 },
+  "settingsSchema": {
+    "type": "object",
+    "properties": {
+      "level": {
+        "type": "string",
+        "title": "Fitness Level",
+        "enum": ["beginner", "intermediate", "advanced"],
+        "default": "beginner"
+      },
+      "goal": {
+        "type": "string",
+        "title": "Fitness Goal",
+        "enum": ["strength", "cardio", "flexibility", "weight-loss"],
+        "default": "strength"
+      }
+    }
+  }
+}

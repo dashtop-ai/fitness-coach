@@ -1,0 +1,18 @@
+{
+  "name": "@dashtop-ai/fitness-coach",
+  "version": "1.0.0",
+  "description": "AI fitness coach — daily workouts, exercise tracking, and personalized coaching",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "dev": "dashtop-widget dev",
+    "build": "vite build",
+    "pack": "vite build && dashtop-widget pack"
+  },
+  "devDependencies": {
+    "@dashtop/widget-sdk": "file:../../dashtop/packages/widget-sdk",
+    "vite": "^6.0.0",
+    "typescript": "^5.0.0"
+  },
+  "keywords": ["dashtop", "fitness", "workout", "health", "exercise", "coaching"]
+}
