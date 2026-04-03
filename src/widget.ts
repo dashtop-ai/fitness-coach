@@ -1,11 +1,13 @@
 import { DashtopApp } from "@dashtop/widget-sdk";
 import type { QuickAction, ListItem } from "@dashtop/widget-sdk";
+import { buildWorkout, GOAL_TEMPLATES } from "./exercises";
 
 /**
  * Fitness Coach
  *
- * AI-powered fitness app. Get daily workouts, track completion,
- * view your weekly log, and monitor stats.
+ * AI-powered fitness app with real exercise data (sourced from free-exercise-db,
+ * public domain). Get daily workouts based on your goal and level, track
+ * completion, view your weekly log, and monitor stats.
  * Extends DashtopApp for the standard layout (header, chat, tabs, quick actions).
  */
 
@@ -14,49 +16,22 @@ interface FitnessConfig {
   goal: "strength" | "cardio" | "flexibility" | "weight-loss";
 }
 
-interface Exercise {
-  id: string;
-  name: string;
-  reps: string;
-  muscle: string;
-  icon: string;
-}
-
-const WORKOUTS: Record<string, Exercise[]> = {
-  beginner: [
-    { id: "e1", name: "Goblet Squats", reps: "3x12", muscle: "Legs", icon: "🦵" },
-    { id: "e2", name: "Push-ups", reps: "3x12", muscle: "Chest", icon: "💪" },
-    { id: "e3", name: "Dumbbell Rows", reps: "3x12", muscle: "Back", icon: "🏋️" },
-    { id: "e4", name: "Lunges", reps: "3x12", muscle: "Legs", icon: "🦵" },
-    { id: "e5", name: "Plank Hold", reps: "3x30s", muscle: "Core", icon: "🧘" },
-    { id: "e6", name: "Bicep Curls", reps: "3x12", muscle: "Arms", icon: "💪" },
-  ],
-  intermediate: [
-    { id: "e1", name: "Barbell Squats", reps: "4x10", muscle: "Legs", icon: "🦵" },
-    { id: "e2", name: "Bench Press", reps: "4x10", muscle: "Chest", icon: "🏋️" },
-    { id: "e3", name: "Bent-Over Rows", reps: "4x10", muscle: "Back", icon: "🏋️" },
-    { id: "e4", name: "Romanian Deadlifts", reps: "4x10", muscle: "Legs", icon: "🦵" },
-    { id: "e5", name: "Overhead Press", reps: "4x10", muscle: "Shoulders", icon: "💪" },
-    { id: "e6", name: "Cable Crunches", reps: "3x15", muscle: "Core", icon: "🧘" },
-  ],
-  advanced: [
-    { id: "e1", name: "Front Squats", reps: "5x8", muscle: "Legs", icon: "🦵" },
-    { id: "e2", name: "Incline Bench Press", reps: "5x8", muscle: "Chest", icon: "🏋️" },
-    { id: "e3", name: "Weighted Pull-ups", reps: "5x8", muscle: "Back", icon: "🏋️" },
-    { id: "e4", name: "Bulgarian Split Squats", reps: "4x10", muscle: "Legs", icon: "🦵" },
-    { id: "e5", name: "Clean & Press", reps: "4x8", muscle: "Full Body", icon: "🔥" },
-    { id: "e6", name: "Dragon Flags", reps: "3x10", muscle: "Core", icon: "🧘" },
-  ],
-};
-
-const MUSCLE_COLORS: Record<string, string> = {
+const BODY_PART_COLORS: Record<string, string> = {
   Legs: "#8b5cf6",
   Chest: "#ef4444",
   Back: "#3b82f6",
   Core: "#f59e0b",
   Arms: "#10b981",
   Shoulders: "#ec4899",
-  "Full Body": "#6366f1",
+};
+
+const BODY_PART_ICONS: Record<string, string> = {
+  Legs: "\uD83E\uDDB5",
+  Chest: "\uD83D\uDCAA",
+  Back: "\uD83C\uDFCB\uFE0F",
+  Core: "\uD83E\uDDD8",
+  Arms: "\uD83D\uDCAA",
+  Shoulders: "\uD83C\uDFCB\uFE0F",
 };
 
 const CHAT_RESPONSES: Record<string, string> = {
@@ -90,7 +65,9 @@ class FitnessCoachApp extends DashtopApp<FitnessConfig> {
 
   get quickActions(): QuickAction[] {
     const level = this.config.level || "beginner";
+    const goal = this.config.goal || "strength";
     return [
+      // Level actions
       {
         label: "Beginner",
         icon: "\uD83C\uDF31",
@@ -121,6 +98,47 @@ class FitnessCoachApp extends DashtopApp<FitnessConfig> {
           this.render_();
         },
       },
+      // Goal actions
+      {
+        label: "Strength",
+        icon: "\uD83C\uDFCB\uFE0F",
+        active: goal === "strength",
+        onClick: () => {
+          this.onConfigChange({ goal: "strength" } as Partial<FitnessConfig>);
+          this.config = { ...this.config, goal: "strength" };
+          this.render_();
+        },
+      },
+      {
+        label: "Cardio",
+        icon: "\uD83C\uDFC3",
+        active: goal === "cardio",
+        onClick: () => {
+          this.onConfigChange({ goal: "cardio" } as Partial<FitnessConfig>);
+          this.config = { ...this.config, goal: "cardio" };
+          this.render_();
+        },
+      },
+      {
+        label: "Flexibility",
+        icon: "\uD83E\uDDD8",
+        active: goal === "flexibility",
+        onClick: () => {
+          this.onConfigChange({ goal: "flexibility" } as Partial<FitnessConfig>);
+          this.config = { ...this.config, goal: "flexibility" };
+          this.render_();
+        },
+      },
+      {
+        label: "Weight Loss",
+        icon: "\uD83D\uDD25",
+        active: goal === "weight-loss",
+        onClick: () => {
+          this.onConfigChange({ goal: "weight-loss" } as Partial<FitnessConfig>);
+          this.config = { ...this.config, goal: "weight-loss" };
+          this.render_();
+        },
+      },
     ];
   }
 
@@ -142,11 +160,13 @@ class FitnessCoachApp extends DashtopApp<FitnessConfig> {
 
   private renderWorkout(container: HTMLElement): void {
     const level = this.config.level || "beginner";
-    const exercises = WORKOUTS[level] || WORKOUTS.beginner;
-    const completed = exercises.filter(
-      (e) => this.getState<boolean>(`done_${e.id}`, false)
+    const goal = this.config.goal || "strength";
+    const workout = buildWorkout(goal, level);
+    const goalTemplate = GOAL_TEMPLATES[goal] || GOAL_TEMPLATES.strength;
+    const completed = workout.filter(
+      (w) => this.getState<boolean>(`done_${w.exercise.id}`, false)
     ).length;
-    const total = exercises.length;
+    const total = workout.length;
     const allDone = completed === total;
 
     const headerHtml = allDone
@@ -154,6 +174,7 @@ class FitnessCoachApp extends DashtopApp<FitnessConfig> {
            <span style="font-size:24px;">&#127881;</span> Workout Complete!
          </div>`
       : `<div style="padding:12px 12px 4px;font-size:12px;color:#666;">
+           <div style="margin-bottom:4px;font-weight:600;color:#1a1a2e;">${goalTemplate.label} Workout</div>
            <span style="font-weight:600;color:${this.color};">${completed}/${total}</span> complete
            <div style="height:4px;background:#f0f0f0;border-radius:4px;margin-top:6px;">
              <div style="height:4px;background:${this.color};border-radius:4px;width:${(completed / total) * 100}%;transition:width 0.3s;"></div>
@@ -164,16 +185,16 @@ class FitnessCoachApp extends DashtopApp<FitnessConfig> {
     container.innerHTML = headerHtml;
     container.appendChild(listContainer);
 
-    const items: ListItem[] = exercises.map((ex) => ({
-      id: ex.id,
-      label: ex.name,
-      sublabel: ex.reps,
-      badge: ex.muscle,
-      badgeColor: MUSCLE_COLORS[ex.muscle] || "#888",
-      icon: ex.icon,
-      checked: this.getState<boolean>(`done_${ex.id}`, false),
+    const items: ListItem[] = workout.map((w) => ({
+      id: w.exercise.id,
+      label: w.exercise.name,
+      sublabel: `${w.setsReps}  \u00B7  ${w.exercise.equipment}`,
+      badge: w.exercise.bodyPart,
+      badgeColor: BODY_PART_COLORS[w.exercise.bodyPart] || "#888",
+      icon: BODY_PART_ICONS[w.exercise.bodyPart] || "\uD83C\uDFCB\uFE0F",
+      checked: this.getState<boolean>(`done_${w.exercise.id}`, false),
       onCheck: (checked: boolean) => {
-        this.setState(`done_${ex.id}`, checked);
+        this.setState(`done_${w.exercise.id}`, checked);
         this.refresh();
       },
     }));
@@ -267,6 +288,19 @@ class FitnessCoachApp extends DashtopApp<FitnessConfig> {
 
   async onChat(message: string): Promise<string> {
     const lower = message.toLowerCase();
+    const level = this.config.level || "beginner";
+    const goal = this.config.goal || "strength";
+
+    // Check if the user is asking about a specific exercise in their workout
+    const workout = buildWorkout(goal, level);
+    const matchedExercise = workout.find((w) =>
+      lower.includes(w.exercise.name.toLowerCase()) ||
+      lower.includes(w.exercise.id.split("-").pop()!)
+    );
+    if (matchedExercise) {
+      const ex = matchedExercise.exercise;
+      return `${ex.name} (${ex.equipment}): ${ex.description} For your ${level} level, aim for ${ex.sets[level]} sets of ${ex.reps[level]} reps.`;
+    }
 
     for (const [keyword, response] of Object.entries(CHAT_RESPONSES)) {
       if (lower.includes(keyword)) return response;
@@ -280,7 +314,12 @@ class FitnessCoachApp extends DashtopApp<FitnessConfig> {
       return "Start with 3 full-body sessions per week. Focus on compound movements like squats, push-ups, and rows. Master form before adding weight.";
     }
 
-    return "Great question! Focus on consistency over intensity. Train 3-5x per week, eat enough protein, sleep 7-8 hours, and progressive overload is your best friend.";
+    if (lower.includes("workout") || lower.includes("today")) {
+      const names = workout.map((w) => w.exercise.name).join(", ");
+      return `Today's ${GOAL_TEMPLATES[goal]?.label || "Strength"} workout (${level}): ${names}. Ask about any exercise for form tips!`;
+    }
+
+    return "Great question! Focus on consistency over intensity. Train 3-5x per week, eat enough protein, sleep 7-8 hours, and progressive overload is your best friend. Ask me about any exercise in your workout for form tips!";
   }
 
   // ── Internal re-render ─────────────────────────
